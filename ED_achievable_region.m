@@ -6,20 +6,22 @@
 % into a closed region. This is useful for design automation of EDs. The
 % idea is that if we write an optimization algorithm to design the optimal
 % ED given a set of input parameters, the search space for the optimum ED
-% will be closed, making it possible to find a global optimum ED.
+% will be closed, making it possible to find a global optimum ED. You can
+% also use this script to manually choose how many stages to make your ED
+% based off of sensitivity, BER, and data rate requirements.
 
 % -------------------------------------------------------------------------
 
 % Set simulation parameters
 
 % RF parameters
-RS = 7.7; % Source / antenna resistance
-P_RF = 0.001e-6; % RX RF Power
+P_RF = -60; % Target RX sensitivity (dBm)
+RS = 7.7; % Source / antenna resistance (Ohms)
 BER = 0.01; % Desired BER
 BW_BB = 1e3; % Baseband signal BW in Hz
 
 % Passive voltage gain from matching
-Av = 100; % In linear units
+Av = 20; % In dB
 
 % Detector Parameters
 RD = 1e6; % Diode resistance (Ohms)
@@ -34,6 +36,10 @@ T = 293; % Room temperature (K)
 % -------------------------------------------------------------------------
 
 % Set all of the bounds on the capacity region for ED output voltage vs. # of stages (N)
+
+% Conversions
+Av = 10 ^ (Av / 10);
+P_RF = 10 ^ (P_RF / 10) * (10 ^ -3);
 
 % Compute the upper bound for the number of allowed stages in the ED
 r = 8 / (2.2 * RD * CC * BW_BB);
