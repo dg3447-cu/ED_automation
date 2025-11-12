@@ -15,10 +15,10 @@
 % Set simulation parameters
 
 % RF parameters
-P_RF = -60; % Target RX sensitivity (dBm)
+P_RF = -63; % Target RX sensitivity (dBm)
 RS = 7.7; % Source / antenna resistance (Ohms)
-BER = 0.01; % Desired BER
-BW_BB = 1e3; % Baseband signal BW in Hz = Data rate
+BER = 0.0559; % Desired BER
+BW_BB = 11.3e3; % Baseband signal BW in Hz = Data rate
 
 % Passive voltage gain from matching
 Av = 20; % In dB
@@ -146,3 +146,59 @@ set(gca, 'XScale', 'log', 'YScale', 'log');
 
 legend('Feasible Region (≤ bound)', 'Data Rate Upper Bound', 'Location', 'northwest');
 hold off;
+
+% --- 3D mapping of sensitivity vs. data rate vs. BER ---
+
+% Define RF power sweep range (in dBm)
+P_RF_dBm_values = -80:1:-40; % Sweep from -80 to -40 dBm
+
+% Define BER range (limited)
+BER_values = logspace(-4, 0, 100); % 10^-4 to 10^0
+
+% Preallocate for speed
+DataRate_matrix = zeros(length(P_RF_dBm_values), length(BER_values));
+
+% Compute data rate for each P_RF value
+for i = 1:length(P_RF_dBm_values)
+    % Convert dBm to Watts
+    P_RF_W = 10^(P_RF_dBm_values(i)/10) * 1e-3;
+
+    % Recompute terms that depend on P_RF
+    r_num = 16 * (n ^ 2) * (Vt ^ 2) * ((sqrt(2) + sqrt(pi)) ^ 2) * k * T;
+    r_den = pi * CC * (Av ^ 4) * (P_RF_W ^ 2) * (RS ^ 2);
+    r_upper = r_num / r_den;
+
+    M1 = r_upper;
+    M2 = exp(-1 / (pi + 2)) * sqrt(pi / (pi + 2));
+    M3 = (1 / M2) * 0.5;
+
+    % Compute the data rate bound for this P_RF
+    M_log = log(M2 * (-2 + (4 * sqrt(0.25 + (M3 * BER_values)))));
+    DataRate_den = 35.2 * RD * CC * (M1 ^ 2) * (M_log .^ 4);
+    DataRate_values = 8 ./ DataRate_den;
+
+    % Limit DataRate to 10^1 – 10^6 range
+    DataRate_values(DataRate_values < 1e1) = 1e1;
+    DataRate_values(DataRate_values > 1e6) = 1e6;
+
+    % Store results
+    DataRate_matrix(i, :) = DataRate_values;
+end
+
+% Create meshgrid for plotting
+[BER_mesh, P_RF_mesh] = meshgrid(BER_values, P_RF_dBm_values);
+
+% 3D plot (BER vs DataRate vs P_RF)
+figure;
+surf(BER_mesh, DataRate_matrix, P_RF_mesh); % BER (fractional), P_RF (dBm)
+xlabel('BER');
+ylabel('Data Rate (bps)');
+zlabel('P_{RF} (dBm)');
+title('3D Relationship: BER vs Data Rate vs RF Input Power');
+set(gca, 'XScale', 'log', 'YScale', 'log');
+xlim([1e-4 1e0]);
+ylim([1e1 1e6]);
+colorbar;
+grid on;
+view(45,30);
+shading interp;
