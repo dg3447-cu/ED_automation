@@ -15,23 +15,23 @@
 % Set simulation parameters
 
 % RF parameters
-P_RF = -63; % Target RX sensitivity (dBm)
-RS = 7.7; % Source / antenna resistance (Ohms)
-BER = 0.0559; % Desired BER
-BW_BB = 11.3e3; % Baseband signal BW in Hz = Data rate
+P_RF = -50; % Target RX sensitivity (dBm)
+RS = 50; % Source / antenna resistance (Ohms)
+BER = 1e-3; % Desired BER
+BW_BB = 1e3; % Baseband signal BW in Hz = Data rate
 
 % Passive voltage gain from matching
 Av = 20; % In dB
 
 % Detector Parameters
 RD = 1e6; % Diode resistance (Ohms)
-CC = 50e-15; % Coupling capacitance (F)
+CC = 70e-15; % Coupling capacitance (F)
 
 % Device parameters
 n = 1.5; % Subthreshold slope constant (between 1 and 2)
 Vt = 26e-3; % Thermal voltage
-k = 1.3e-23; % Boltzmann's constant
-T = 293; % Room temperature (K)
+k = 1.38e-23; % Boltzmann's constant
+T = 298; % Room temperature (K)
 
 % -------------------------------------------------------------------------
 
@@ -47,13 +47,14 @@ discriminant = sqrt(1 + r);
 N_UPPER_BOUND = 0.25 * discriminant;
 
 % Compute the lower bound for the number of allowed stages in the ED
-r_num = 16 * (n ^ 2) * (Vt ^ 2) * ((sqrt(2) + sqrt(pi)) ^ 2) * k * T;
-r_den = pi * CC * (Av ^ 4) * (P_RF ^ 2) * (RS ^ 2);
-r_upper = r_num / r_den;
-r_ln_inner_sqrt = (sqrt((pi + 2) / pi) * BER * exp(1 / (pi + 2)) * 0.5) + 0.25;
-r_ln_inner = (-2 + (4 * sqrt(r_ln_inner_sqrt))) * exp(-1 / (2 + pi)) * sqrt(pi / (2 + pi));
-r_ln = (log(r_ln_inner)) ^ 2;
-N_LOWER_BOUND = r_upper * r_ln;
+num_lower_coeff = 5 * k * T;
+Q_1_lower = -2 + 4 * ((0.25 + 0.5 * (BER * (((pi + 2) / pi) ^ 0.5) * exp(1 / (pi + 2)))) ^ 0.5);
+num_ln = log(Q_1_lower * ((pi / (pi + 2)) ^ 0.5) * exp(-1 / (pi + 2)));
+num_ln = num_ln * num_ln;
+num_lower = num_lower_coeff * num_ln;
+den_lower = (Av * P_RF * RS) ^ 2 * CC;
+N_LOWER_BOUND = num_lower / den_lower;
+N_LOWER_BOUND = N_LOWER_BOUND ^ (1 / 3);
 
 % Compute upper and lower bounds for ED voltage as a function of N
 n_limits = 1:1:2; % Subthreshold slope constant is between 1 and 2
@@ -102,7 +103,7 @@ end
 
 % Select the optimum N
 N_opt = (N_LOWER_BOUND + N_UPPER_BOUND) / 2;
-fprintf("The optimum number of stages for the given detector criteria is: %0i\n\n", floor(N_opt))
+fprintf("The average number of stages to meet the given detector criteria is: %0i\n\n", floor(N_opt))
 
 % Summarize design criteria
 fprintf("Design criteria summary:\n")
@@ -118,13 +119,15 @@ fprintf("Desired Bit error rate (%%): %0f\n", BER * 100)
 % slide past each other, indicating that a capacity region cannot exist.
 
 % Compute data rate vs. BER bound
-M1 = r_upper;
-M2 = exp(-1 / (pi + 2)) * sqrt(pi / (pi + 2));
-M3 = (1 / M2) * 0.5;
 BER_values = logspace(log10(0.00001), log10(0.1), 100);
-M_log = log(M2 * (-2 + (4 * sqrt(0.25 + (M3 * BER_values)))));
-DataRate_den = 35.2 * RD * CC * (M1 ^ 2) * (M_log .^ 4);
-DataRate_values = 8 ./ DataRate_den;
+Q_1_lower_sweep = -2 + 4 * ((0.25 + 0.5 * (BER_values * (((pi + 2) / pi) ^ 0.5) * exp(1 / (pi + 2)))) .^ 0.5);
+num_ln_sweep = log(Q_1_lower_sweep * ((pi / (pi + 2)) ^ 0.5) * exp(-1 / (pi + 2)));
+num_ln_sweep = num_ln_sweep .* num_ln_sweep;
+num_lower_sweep = num_lower_coeff .* num_ln_sweep;
+den_lower_sweep = (Av * P_RF * RS) ^ 2 * CC;
+phi = num_lower_sweep / den_lower_sweep;
+BER_function = 16 * ((phi) .^ (2 / 3)) - 1;
+DataRate_values = 8 ./ (2.2 * RD * CC * BER_function);
 
 % Plot Data Rate vs BER on log-log scale
 figure;
@@ -162,20 +165,14 @@ DataRate_matrix = zeros(length(P_RF_dBm_values), length(BER_values));
 for i = 1:length(P_RF_dBm_values)
     % Convert dBm to Watts
     P_RF_W = 10^(P_RF_dBm_values(i)/10) * 1e-3;
-
-    % Recompute terms that depend on P_RF
-    r_num = 16 * (n ^ 2) * (Vt ^ 2) * ((sqrt(2) + sqrt(pi)) ^ 2) * k * T;
-    r_den = pi * CC * (Av ^ 4) * (P_RF_W ^ 2) * (RS ^ 2);
-    r_upper = r_num / r_den;
-
-    M1 = r_upper;
-    M2 = exp(-1 / (pi + 2)) * sqrt(pi / (pi + 2));
-    M3 = (1 / M2) * 0.5;
-
-    % Compute the data rate bound for this P_RF
-    M_log = log(M2 * (-2 + (4 * sqrt(0.25 + (M3 * BER_values)))));
-    DataRate_den = 35.2 * RD * CC * (M1 ^ 2) * (M_log .^ 4);
-    DataRate_values = 8 ./ DataRate_den;
+    Q_1_lower_sweep = -2 + 4 * ((0.25 + 0.5 * (BER_values * (((pi + 2) / pi) ^ 0.5) * exp(1 / (pi + 2)))) .^ 0.5);
+    num_ln_sweep = log(Q_1_lower_sweep * ((pi / (pi + 2)) ^ 0.5) * exp(-1 / (pi + 2)));
+    num_ln_sweep = num_ln_sweep .* num_ln_sweep;
+    num_lower_sweep = num_lower_coeff .* num_ln_sweep;
+    den_lower_sweep = (Av * P_RF_W * RS) ^ 2 * CC;
+    phi = num_lower_sweep ./ den_lower_sweep;
+    BER_function = 16 * ((phi) .^ (2 / 3)) - 1;
+    DataRate_values = 8 ./ (2.2 * RD * CC * BER_function);
 
     % Limit DataRate to 10^1 – 10^6 range
     DataRate_values(DataRate_values < 1e1) = 1e1;
