@@ -21,7 +21,7 @@ BER = 1e-3; % Desired BER
 BW_BB = 1e3; % Baseband signal BW in Hz = Data rate
 
 % Passive voltage gain from matching
-Av = 28; % In dB
+Av = 25; % In dB
 
 % Detector Parameters
 RD = 1e6; % Diode resistance (Ohms)
