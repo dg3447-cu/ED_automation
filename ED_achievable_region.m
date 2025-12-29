@@ -15,13 +15,13 @@
 % Set simulation parameters
 
 % RF parameters
-P_RF = -50; % Target RX sensitivity (dBm)
+P_RF = -60; % Target RX sensitivity (dBm)
 RS = 50; % Source / antenna resistance (Ohms)
 BER = 1e-3; % Desired BER
 BW_BB = 1e3; % Baseband signal BW in Hz = Data rate
 
 % Passive voltage gain from matching
-Av = 20; % In dB
+Av = 28; % In dB
 
 % Detector Parameters
 RD = 1e6; % Diode resistance (Ohms)
@@ -51,8 +51,8 @@ num_lower_coeff = 5 * k * T;
 Q_1_lower = -2 + 4 * ((0.25 + 0.5 * (BER * (((pi + 2) / pi) ^ 0.5) * exp(1 / (pi + 2)))) ^ 0.5);
 num_ln = log(Q_1_lower * ((pi / (pi + 2)) ^ 0.5) * exp(-1 / (pi + 2)));
 num_ln = num_ln * num_ln;
-num_lower = num_lower_coeff * num_ln;
-den_lower = (Av * P_RF * RS) ^ 2 * CC;
+num_lower = num_lower_coeff * num_ln * Vt;
+den_lower = (((1 / n) - 0.5) ^ 2) * (Av * P_RF * RS) ^ 2 * CC;
 N_LOWER_BOUND = num_lower / den_lower;
 N_LOWER_BOUND = N_LOWER_BOUND ^ (1 / 3);
 
@@ -123,8 +123,8 @@ BER_values = logspace(log10(0.00001), log10(0.1), 100);
 Q_1_lower_sweep = -2 + 4 * ((0.25 + 0.5 * (BER_values * (((pi + 2) / pi) ^ 0.5) * exp(1 / (pi + 2)))) .^ 0.5);
 num_ln_sweep = log(Q_1_lower_sweep * ((pi / (pi + 2)) ^ 0.5) * exp(-1 / (pi + 2)));
 num_ln_sweep = num_ln_sweep .* num_ln_sweep;
-num_lower_sweep = num_lower_coeff .* num_ln_sweep;
-den_lower_sweep = (Av * P_RF * RS) ^ 2 * CC;
+num_lower_sweep = num_lower_coeff .* num_ln_sweep * Vt;
+den_lower_sweep = (((1 / n) - 0.5) ^ 2) * (Av * P_RF * RS) ^ 2 * CC;
 phi = num_lower_sweep / den_lower_sweep;
 BER_function = 16 * ((phi) .^ (2 / 3)) - 1;
 DataRate_values = 8 ./ (2.2 * RD * CC * BER_function);
@@ -168,8 +168,8 @@ for i = 1:length(P_RF_dBm_values)
     Q_1_lower_sweep = -2 + 4 * ((0.25 + 0.5 * (BER_values * (((pi + 2) / pi) ^ 0.5) * exp(1 / (pi + 2)))) .^ 0.5);
     num_ln_sweep = log(Q_1_lower_sweep * ((pi / (pi + 2)) ^ 0.5) * exp(-1 / (pi + 2)));
     num_ln_sweep = num_ln_sweep .* num_ln_sweep;
-    num_lower_sweep = num_lower_coeff .* num_ln_sweep;
-    den_lower_sweep = (Av * P_RF_W * RS) ^ 2 * CC;
+    num_lower_sweep = num_lower_coeff .* num_ln_sweep * Vt;
+    den_lower_sweep = (((1 / n) - 0.5) ^ 2) * (Av * P_RF_W * RS) ^ 2 * CC;
     phi = num_lower_sweep ./ den_lower_sweep;
     BER_function = 16 * ((phi) .^ (2 / 3)) - 1;
     DataRate_values = 8 ./ (2.2 * RD * CC * BER_function);
