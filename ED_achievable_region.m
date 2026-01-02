@@ -39,6 +39,7 @@ T = 298; % Room temperature (K)
 
 % Conversions
 Av = 10 ^ (Av / 10);
+P_RF_raw = P_RF;
 P_RF = 10 ^ (P_RF / 10) * (10 ^ -3);
 
 % Compute the upper bound for the number of allowed stages in the ED
@@ -131,6 +132,7 @@ DataRate_values = 8 ./ (2.2 * RD * CC * BER_function);
 subplot(2, 2, 1)
 semilogx(BER_values, DataRate_values / (10 ^ 3)); grid;
 xlabel("BER"); ylabel("Data Rate (kbps)"); title("Data Rate vs. BER Boundary");
+legend(sprintf('Sensitivity (dBm) = %i', P_RF_raw))
 
 % --- Plot bounding sensitivity vs. BER ---
 num_coeff = 8000 * Vt * sqrt(5 * k * T);
@@ -148,6 +150,7 @@ P_RF_values_BER = 10 * log10(P_RF_values_BER);
 subplot(2, 2, 2)
 semilogx(BER_values, P_RF_values_BER); grid;
 xlabel("BER"); ylabel("Sensitivity (dBm)"); title("Sensitivity vs. BER Boundary");
+legend(sprintf('Data Rate (kbps) = %i', BW_BB / 1000))
 
 % --- Plot bounding sensitivity vs. data rate ---
 Data_rate_values = linspace(1, 50000, res);
@@ -167,6 +170,7 @@ P_RF_values_drate = 10 * log10(P_RF_values_drate);
 subplot(2, 2, 3)
 plot(Data_rate_values / 10 ^ 3, P_RF_values_drate); grid;
 xlabel("Data Rate (kbps)"); ylabel("Sensitivity (dBm)"); title("Sensitivity vs. Data Rate Boundary");
+legend(sprintf('BER = %i', BER))
 
 % --- Plot all three as a surface ---
 [DR, BER] = meshgrid(Data_rate_values, BER_values);
