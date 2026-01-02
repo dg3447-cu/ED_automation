@@ -16,12 +16,12 @@
 
 % RF parameters
 P_RF = -60; % Target RX sensitivity (dBm)
-RS = 50; % Source / antenna resistance (Ohms)
+RS = 15; % Source / antenna resistance (Ohms)
 BER = 1e-3; % Desired BER
 BW_BB = 1e3; % Baseband signal BW in Hz = Data rate
 
 % Passive voltage gain from matching
-Av = 25; % In dB
+Av = 20; % In dB
 
 % Detector Parameters
 RD = 1e6; % Diode resistance (Ohms)
@@ -47,18 +47,19 @@ discriminant = sqrt(1 + r);
 N_UPPER_BOUND = 0.25 * discriminant;
 
 % Compute the lower bound for the number of allowed stages in the ED
+p_0 = exp(-1 / (pi + 2)) * sqrt(pi / (pi + 2));
 num_lower_coeff = 5 * k * T;
-Q_1_lower = -2 + 4 * ((0.25 + 0.5 * (BER * (((pi + 2) / pi) ^ 0.5) * exp(1 / (pi + 2)))) ^ 0.5);
-num_ln = log(Q_1_lower * ((pi / (pi + 2)) ^ 0.5) * exp(-1 / (pi + 2)));
+Q_1_lower = -2 + 4 * ((0.25 + 0.5 * (BER / p_0)) ^ 0.5);
+num_ln = log(Q_1_lower * p_0);
 num_ln = num_ln * num_ln;
-num_lower = num_lower_coeff * num_ln * Vt;
+num_lower = num_lower_coeff * num_ln * (Vt ^ 2);
 den_lower = (((1 / n) - 0.5) ^ 2) * (Av * P_RF * RS) ^ 2 * CC;
 N_LOWER_BOUND = num_lower / den_lower;
 N_LOWER_BOUND = N_LOWER_BOUND ^ (1 / 3);
 
 % Compute upper and lower bounds for ED voltage as a function of N
 n_limits = 1:1:2; % Subthreshold slope constant is between 1 and 2
-k_limits = 1 ./ (2 .* n_limits * Vt); % Min and Max conversion gain
+k_limits = (1 / (2 * Vt)) * ((1 ./ (n_limits)) - 0.5); % Min and Max conversion gain
 N_values = 0:1:(floor(N_UPPER_BOUND * 1.2));
 V_out_ED_MIN = (Av .^ 2) .* k_limits(2) .* N_values .* (P_RF * RS);
 V_out_ED_MAX = (Av .^ 2) .* k_limits(1) .* N_values .* (P_RF * RS);
@@ -101,101 +102,93 @@ end
 
 % -------------------------------------------------------------------------
 
-% Select the optimum N
-N_opt = (N_LOWER_BOUND + N_UPPER_BOUND) / 2;
-fprintf("The average number of stages to meet the given detector criteria is: %0i\n\n", floor(N_opt))
+% Plot three three system requirements again each other:
+% Sensitivity = minimum RF input power required to achieve the given input parameters
+% Data Rate
+% BER
 
-% Summarize design criteria
-fprintf("Design criteria summary:\n")
-fprintf("Expected RF Input Power (W): %0i\n", P_RF)
-fprintf("Desired Bit Rate (Hz): %0i\n", BW_BB)
-fprintf("Desired Bit error rate (%%): %0f\n", BER * 100)
+% Remember that these equations are derived off of bounds, so the provided
+% plots are bounding regions where the curve itself gives the best case scenario.
+% The third parameter that is not being swept is fixed at whatever the
+% main simulation input is set to.
 
-% -------------------------------------------------------------------------
+res = 1000;
+figure;
 
-% Plot allowed data rate vs. BER for the detector, since both are bounded
-% with respect to each other. If this bound is broken in the ED design
-% process, the leftmost and rightmist points in the capacity region will
-% slide past each other, indicating that a capacity region cannot exist.
+% --- Plot bounding data rate vs. BER ---
+BER_values = logspace(log10(0.00001), log10(0.1), res);
 
-% Compute data rate vs. BER bound
-BER_values = logspace(log10(0.00001), log10(0.1), 100);
-Q_1_lower_sweep = -2 + 4 * ((0.25 + 0.5 * (BER_values * (((pi + 2) / pi) ^ 0.5) * exp(1 / (pi + 2)))) .^ 0.5);
-num_ln_sweep = log(Q_1_lower_sweep * ((pi / (pi + 2)) ^ 0.5) * exp(-1 / (pi + 2)));
+Q_1_lower_sweep = -2 + 4 * ((0.25 + 0.5 * (BER_values / p_0)) .^ 0.5);
+num_ln_sweep = log(Q_1_lower_sweep * p_0);
 num_ln_sweep = num_ln_sweep .* num_ln_sweep;
-num_lower_sweep = num_lower_coeff .* num_ln_sweep * Vt;
+num_lower_sweep = num_lower_coeff * num_ln_sweep * (Vt ^ 2);
+
 den_lower_sweep = (((1 / n) - 0.5) ^ 2) * (Av * P_RF * RS) ^ 2 * CC;
 phi = num_lower_sweep / den_lower_sweep;
 BER_function = 16 * ((phi) .^ (2 / 3)) - 1;
 DataRate_values = 8 ./ (2.2 * RD * CC * BER_function);
 
-% Plot Data Rate vs BER on log-log scale
-figure;
-hold on;
+subplot(2, 2, 1)
+semilogx(BER_values, DataRate_values / (10 ^ 3)); grid;
+xlabel("BER"); ylabel("Data Rate (kbps)"); title("Data Rate vs. BER Boundary");
 
-% Shade region where data rate <= bound
-X = [BER_values * 100, fliplr(BER_values * 100)];
-Y = [DataRate_values, ones(size(DataRate_values))*100]; % lower bound (100 bps)
-fill(X, Y, [0.8 0.9 1], 'EdgeColor', 'none'); % light blue region
+% --- Plot bounding sensitivity vs. BER ---
+num_coeff = 8000 * Vt * sqrt(5 * k * T);
+num_ln = log(p_0 * (-2 + 4 * sqrt(0.25 + (BER_values / (2 * p_0)))));
+num = num_coeff * num_ln;
 
-loglog(BER_values * 100, DataRate_values, 'b-', 'LineWidth', 2);
-grid on;
-xlabel('BER (%)');
-ylabel('Data Rate (bps)');
-title('Data Rate vs. BER');
-xlim([0.001 10]);
-ylim([100 1e6]);
-set(gca, 'XScale', 'log', 'YScale', 'log');
+den_coeff = Av * RS * sqrt(CC) * ((1 / n) - 0.5);
+den_up_contr = 1 + (8 ./ (2.2 * RD * CC * BW_BB));
+den_up_contr = (den_up_contr) .^ (3 / 4);
+den = den_coeff .* den_up_contr;
 
-legend('Feasible Region (≤ bound)', 'Data Rate Upper Bound', 'Location', 'northwest');
-hold off;
+P_RF_values_BER = abs(num ./ den);
+P_RF_values_BER = 10 * log10(P_RF_values_BER);
 
-% --- 3D mapping of sensitivity vs. data rate vs. BER ---
+subplot(2, 2, 2)
+semilogx(BER_values, P_RF_values_BER); grid;
+xlabel("BER"); ylabel("Sensitivity (dBm)"); title("Sensitivity vs. BER Boundary");
 
-% Define RF power sweep range (in dBm)
-P_RF_dBm_values = -80:1:-40; % Sweep from -80 to -40 dBm
+% --- Plot bounding sensitivity vs. data rate ---
+Data_rate_values = linspace(1, 100000, res);
 
-% Define BER range (limited)
-BER_values = logspace(-4, 0, 100); % 10^-4 to 10^0
+num_coeff = 8000 * Vt * sqrt(5 * k * T);
+num_ln = log(p_0 * (-2 + 4 * sqrt(0.25 + (BER / (2 * p_0)))));
+num = num_coeff * num_ln;
 
-% Preallocate for speed
-DataRate_matrix = zeros(length(P_RF_dBm_values), length(BER_values));
+den_coeff = Av * RS * sqrt(CC) * ((1 / n) - 0.5);
+den_up_contr = 1 + (8 ./ (2.2 * RD * CC * Data_rate_values));
+den_up_contr = (den_up_contr) .^ (3 / 4);
+den = den_coeff .* den_up_contr;
 
-% Compute data rate for each P_RF value
-for i = 1:length(P_RF_dBm_values)
-    % Convert dBm to Watts
-    P_RF_W = 10^(P_RF_dBm_values(i)/10) * 1e-3;
-    Q_1_lower_sweep = -2 + 4 * ((0.25 + 0.5 * (BER_values * (((pi + 2) / pi) ^ 0.5) * exp(1 / (pi + 2)))) .^ 0.5);
-    num_ln_sweep = log(Q_1_lower_sweep * ((pi / (pi + 2)) ^ 0.5) * exp(-1 / (pi + 2)));
-    num_ln_sweep = num_ln_sweep .* num_ln_sweep;
-    num_lower_sweep = num_lower_coeff .* num_ln_sweep * Vt;
-    den_lower_sweep = (((1 / n) - 0.5) ^ 2) * (Av * P_RF_W * RS) ^ 2 * CC;
-    phi = num_lower_sweep ./ den_lower_sweep;
-    BER_function = 16 * ((phi) .^ (2 / 3)) - 1;
-    DataRate_values = 8 ./ (2.2 * RD * CC * BER_function);
+P_RF_values_drate = abs(num ./ den);
+P_RF_values_drate = 10 * log10(P_RF_values_drate);
 
-    % Limit DataRate to 10^1 – 10^6 range
-    DataRate_values(DataRate_values < 1e1) = 1e1;
-    DataRate_values(DataRate_values > 1e6) = 1e6;
+subplot(2, 2, 3)
+plot(Data_rate_values / 10 ^ 3, P_RF_values_drate); grid;
+xlabel("Data Rate (kbps)"); ylabel("Sensitivity (dBm)"); title("Sensitivity vs. Data Rate Boundary");
 
-    % Store results
-    DataRate_matrix(i, :) = DataRate_values;
-end
+% --- Plot all three as a surface ---
+[DR, BER] = meshgrid(Data_rate_values, BER_values);
 
-% Create meshgrid for plotting
-[BER_mesh, P_RF_mesh] = meshgrid(BER_values, P_RF_dBm_values);
+num_coeff = 8000 * Vt * sqrt(5 * k * T);
+num_ln = log(p_0 * (-2 + 4 * sqrt(0.25 + (BER ./ (2 * p_0)))));
+num = num_coeff .* num_ln;
 
-% 3D plot (BER vs DataRate vs P_RF)
-figure;
-surf(BER_mesh, DataRate_matrix, P_RF_mesh); % BER (fractional), P_RF (dBm)
-xlabel('BER');
-ylabel('Data Rate (bps)');
-zlabel('P_{RF} (dBm)');
-title('3D Relationship: BER vs Data Rate vs RF Input Power');
-set(gca, 'XScale', 'log', 'YScale', 'log');
-xlim([1e-4 1e0]);
-ylim([1e1 1e6]);
-colorbar;
-grid on;
-view(45,30);
-shading interp;
+den_coeff = Av * RS * sqrt(CC) * ((1 / n) - 0.5);
+den_up_contr = 1 + (8 ./ (2.2 * RD * CC .* DR));
+den_up_contr = den_up_contr .^ (3 / 4);
+den = den_coeff .* den_up_contr;
+
+P_RF = abs(num ./ den);
+P_RF = 10 * log10(P_RF);
+
+subplot(2, 2, 4)
+surf(DR / 1e3, BER, P_RF)
+shading interp
+colorbar
+
+set(gca, 'YScale', 'log')
+
+xlabel("Data Rate (kbps)"); ylabel("BER"); zlabel("Sensitivity (dBm)")
+title("Optimal Data Rate / BER / Sensitivity Surface")
