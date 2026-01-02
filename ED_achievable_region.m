@@ -15,13 +15,13 @@
 % Set simulation parameters
 
 % RF parameters
-P_RF = -60; % Target RX sensitivity (dBm)
+P_RF = -65; % Target RX sensitivity (dBm)
 RS = 15; % Source / antenna resistance (Ohms)
 BER = 1e-3; % Desired BER
 BW_BB = 1e3; % Baseband signal BW in Hz = Data rate
 
 % Passive voltage gain from matching
-Av = 20; % In dB
+Av = 28; % In dB
 
 % Detector Parameters
 RD = 1e6; % Diode resistance (Ohms)
@@ -150,7 +150,7 @@ semilogx(BER_values, P_RF_values_BER); grid;
 xlabel("BER"); ylabel("Sensitivity (dBm)"); title("Sensitivity vs. BER Boundary");
 
 % --- Plot bounding sensitivity vs. data rate ---
-Data_rate_values = linspace(1, 100000, res);
+Data_rate_values = linspace(1, 50000, res);
 
 num_coeff = 8000 * Vt * sqrt(5 * k * T);
 num_ln = log(p_0 * (-2 + 4 * sqrt(0.25 + (BER / (2 * p_0)))));
