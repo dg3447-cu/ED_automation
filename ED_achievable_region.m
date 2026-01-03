@@ -15,13 +15,16 @@
 % Set simulation parameters
 
 % RF parameters
-P_RF = -65; % Target RX sensitivity (dBm)
-RS = 15; % Source / antenna resistance (Ohms)
+P_RF = -60; % Target RX sensitivity (dBm)
+RS = 3; % Source / antenna resistance (Ohms)
 BER = 1e-3; % Desired BER
 BW_BB = 1e3; % Baseband signal BW in Hz = Data rate
 
 % Passive voltage gain from matching
-Av = 28; % In dB
+Av = 30; % In dB
+
+% Variance from simulation results after fabricationg the detector
+fab_variation = 5; % Percent
 
 % Detector Parameters
 RD = 1e6; % Diode resistance (Ohms)
@@ -42,10 +45,14 @@ Av = 10 ^ (Av / 10);
 P_RF_raw = P_RF;
 P_RF = 10 ^ (P_RF / 10) * (10 ^ -3);
 
+% Add a buffer for PVT variation
+fab_variation = fab_variation / 100;
+
 % Compute the upper bound for the number of allowed stages in the ED
 r = 8 / (2.2 * RD * CC * BW_BB);
 discriminant = sqrt(1 + r);
 N_UPPER_BOUND = 0.25 * discriminant;
+N_UPPER_BOUND = N_UPPER_BOUND * (1 - fab_variation);
 
 % Compute the lower bound for the number of allowed stages in the ED
 p_0 = exp(-1 / (pi + 2)) * sqrt(pi / (pi + 2));
@@ -57,6 +64,7 @@ num_lower = num_lower_coeff * num_ln * (Vt ^ 2);
 den_lower = (((1 / n) - 0.5) ^ 2) * (Av * P_RF * RS) ^ 2 * CC;
 N_LOWER_BOUND = num_lower / den_lower;
 N_LOWER_BOUND = N_LOWER_BOUND ^ (1 / 3);
+N_LOWER_BOUND = N_LOWER_BOUND * (1 + fab_variation);
 
 % Compute upper and lower bounds for ED voltage as a function of N
 n_limits = 1:1:2; % Subthreshold slope constant is between 1 and 2
