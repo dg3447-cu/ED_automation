@@ -15,13 +15,13 @@
 % Set simulation parameters
 
 % RF parameters
-P_RF = -60; % Target RX sensitivity (dBm)
-RS = 3; % Source / antenna resistance (Ohms)
+P_RF = -65; % Target RX sensitivity (dBm)
+RS = 1.3; % Source / antenna resistance (Ohms)
 BER = 1e-3; % Desired BER
 BW_BB = 1e3; % Baseband signal BW in Hz = Data rate
 
 % Passive voltage gain from matching
-Av = 30; % In dB
+Av = 20; % In dB
 
 % Variance from simulation results after fabricationg the detector
 fab_variation = 5; % Percent
@@ -61,7 +61,7 @@ Q_1_lower = -2 + 4 * ((0.25 + 0.5 * (BER / p_0)) ^ 0.5);
 num_ln = log(Q_1_lower * p_0);
 num_ln = num_ln * num_ln;
 num_lower = num_lower_coeff * num_ln * (Vt ^ 2);
-den_lower = (((1 / n) - 0.5) ^ 2) * (Av * P_RF * RS) ^ 2 * CC;
+den_lower = (((1 / n) - 0.5) ^ 2) * ((Av ^ 2) * P_RF * RS) ^ 2 * CC;
 N_LOWER_BOUND = num_lower / den_lower;
 N_LOWER_BOUND = N_LOWER_BOUND ^ (1 / 3);
 N_LOWER_BOUND = N_LOWER_BOUND * (1 + fab_variation);
@@ -70,8 +70,8 @@ N_LOWER_BOUND = N_LOWER_BOUND * (1 + fab_variation);
 n_limits = 1:1:2; % Subthreshold slope constant is between 1 and 2
 k_limits = (1 / (2 * Vt)) * ((1 ./ (n_limits)) - 0.5); % Min and Max conversion gain
 N_values = 0:1:(floor(N_UPPER_BOUND * 1.2));
-V_out_ED_MIN = (Av .^ 2) .* k_limits(2) .* N_values .* (P_RF * RS);
-V_out_ED_MAX = (Av .^ 2) .* k_limits(1) .* N_values .* (P_RF * RS);
+V_out_ED_MIN = (Av ^ 2) .* k_limits(2) .* N_values .* (P_RF * RS);
+V_out_ED_MAX = (Av ^ 2) .* k_limits(1) .* N_values .* (P_RF * RS);
 
 % Sanity check: if N_LOWER_BOUND > N_UPPER_BOUND, this indicates that the
 % given RF parameters make it impossible to design an ED that meets the
@@ -132,7 +132,7 @@ num_ln_sweep = log(Q_1_lower_sweep * p_0);
 num_ln_sweep = num_ln_sweep .* num_ln_sweep;
 num_lower_sweep = num_lower_coeff * num_ln_sweep * (Vt ^ 2);
 
-den_lower_sweep = (((1 / n) - 0.5) ^ 2) * (Av * P_RF * RS) ^ 2 * CC;
+den_lower_sweep = (((1 / n) - 0.5) ^ 2) * ((Av ^ 2) * P_RF * RS) ^ 2 * CC;
 phi = num_lower_sweep / den_lower_sweep;
 BER_function = 16 * ((phi) .^ (2 / 3)) - 1;
 DataRate_values = 8 ./ (2.2 * RD * CC * BER_function);
@@ -147,7 +147,7 @@ num_coeff = 8000 * Vt * sqrt(5 * k * T);
 num_ln = log(p_0 * (-2 + 4 * sqrt(0.25 + (BER_values / (2 * p_0)))));
 num = num_coeff * num_ln;
 
-den_coeff = Av * RS * sqrt(CC) * ((1 / n) - 0.5);
+den_coeff = (Av ^ 2) * RS * sqrt(CC) * ((1 / n) - 0.5);
 den_up_contr = 1 + (8 ./ (2.2 * RD * CC * BW_BB));
 den_up_contr = (den_up_contr) .^ (3 / 4);
 den = den_coeff .* den_up_contr;
@@ -167,7 +167,7 @@ num_coeff = 8000 * Vt * sqrt(5 * k * T);
 num_ln = log(p_0 * (-2 + 4 * sqrt(0.25 + (BER / (2 * p_0)))));
 num = num_coeff * num_ln;
 
-den_coeff = Av * RS * sqrt(CC) * ((1 / n) - 0.5);
+den_coeff = (Av ^ 2) * RS * sqrt(CC) * ((1 / n) - 0.5);
 den_up_contr = 1 + (8 ./ (2.2 * RD * CC * Data_rate_values));
 den_up_contr = (den_up_contr) .^ (3 / 4);
 den = den_coeff .* den_up_contr;
@@ -187,7 +187,7 @@ num_coeff = 8000 * Vt * sqrt(5 * k * T);
 num_ln = log(p_0 * (-2 + 4 * sqrt(0.25 + (BER ./ (2 * p_0)))));
 num = num_coeff .* num_ln;
 
-den_coeff = Av * RS * sqrt(CC) * ((1 / n) - 0.5);
+den_coeff = (Av ^ 2) * RS * sqrt(CC) * ((1 / n) - 0.5);
 den_up_contr = 1 + (8 ./ (2.2 * RD * CC .* DR));
 den_up_contr = den_up_contr .^ (3 / 4);
 den = den_coeff .* den_up_contr;
